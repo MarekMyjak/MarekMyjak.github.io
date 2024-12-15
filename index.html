@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder with Speech Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        audio {
+            display: block;
+            margin: 20px auto;
+        }
+        #detectedWords {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<h1>Audio Recorder with Speech Detection</h1>
+<button id="startRecording">Start Recording</button>
+<button id="stopRecording" disabled>Stop Recording</button>
+<audio id="audioPlayback" controls></audio>
+<div id="detectedWords">Detected Words: None</div>
+
+<script>
+    const startRecordingButton = document.getElementById('startRecording');
+    const stopRecordingButton = document.getElementById('stopRecording');
+    const audioPlayback = document.getElementById('audioPlayback');
+    const detectedWordsDiv = document.getElementById('detectedWords');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    const targetWords = ["jakieś", "yyyy", "aaaa"];
+
+    // Speech recognition setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'pl-PL';
+
+    let detectedWords = [];
+
+    startRecordingButton.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+                audioChunks = [];
+            };
+
+            mediaRecorder.start();
+            recognition.start();
+            detectedWords = [];
+            detectedWordsDiv.textContent = "Detected Words: None";
+
+            startRecordingButton.disabled = true;
+            stopRecordingButton.disabled = false;
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+        }
+    });
+
+    stopRecordingButton.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            recognition.stop();
+            startRecordingButton.disabled = false;
+            stopRecordingButton.disabled = true;
+        }
+    });
+
+    recognition.onresult = event => {
+        const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join(' ')
+            .toLowerCase();
+
+        targetWords.forEach(word => {
+            if (transcript.includes(word) && !detectedWords.includes(word)) {
+                detectedWords.push(word);
+
+                // Automatically play the last 10 seconds of the audio
+                if (audioPlayback.src) {
+                    const audioDuration = audioPlayback.duration;
+                    if (!isNaN(audioDuration) && audioDuration > 10) {
+                        audioPlayback.currentTime = audioDuration - 10;
+                    } else {
+                        audioPlayback.currentTime = 0;
+                    }
+                    audioPlayback.play();
+                }
+            }
+        });
+
+        detectedWordsDiv.textContent = "Detected Words: " + (detectedWords.length ? detectedWords.join(', ') : 'None');
+    };
+
+    recognition.onerror = event => {
+        console.error('Speech recognition error:', event.error);
+    };
+</script>
+</body>
+</html>
