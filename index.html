@@ -44,12 +44,14 @@
 <audio id="audioPlayback" controls></audio>
 <div id="timer">Recording Time: 0s</div>
 <div id="detectedWords">Detected Words: None</div>
+<div id="transcript">Transcript: None</div>
 
 <script>
     const startRecordingButton = document.getElementById('startRecording');
     const stopRecordingButton = document.getElementById('stopRecording');
     const audioPlayback = document.getElementById('audioPlayback');
     const detectedWordsDiv = document.getElementById('detectedWords');
+    const transcriptDiv = document.getElementById('transcriptDiv');
     const timerDiv = document.getElementById('timer');
     const supportCheckDiv = document.getElementById('supportCheck');
 
@@ -100,6 +102,9 @@
             detectedWords = [];
             detectedWordsDiv.textContent = "Detected Words: None";
 
+            transcript = [];
+            transcriptDiv.textContent = "Transcript: None";
+
             startRecordingButton.disabled = true;
             stopRecordingButton.disabled = false;
 
@@ -132,7 +137,7 @@
 
     if (recognition) {
         recognition.onresult = event => {
-            console.log(event.results);
+            detectedWords.push(transcript);
             const transcript = Array.from(event.results)
                 .map(result => result[0].transcript)
                 .join(' ')
