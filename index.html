@@ -29,10 +29,16 @@
             font-size: 16px;
             color: blue;
         }
+        #supportCheck {
+            margin-top: 20px;
+            font-size: 16px;
+            color: red;
+        }
     </style>
 </head>
 <body>
 <h1>Audio Recorder with Speech Detection</h1>
+<div id="supportCheck"></div>
 <button id="startRecording">Start Recording</button>
 <button id="stopRecording" disabled>Stop Recording</button>
 <audio id="audioPlayback" controls></audio>
@@ -45,17 +51,29 @@
     const audioPlayback = document.getElementById('audioPlayback');
     const detectedWordsDiv = document.getElementById('detectedWords');
     const timerDiv = document.getElementById('timer');
+    const supportCheckDiv = document.getElementById('supportCheck');
 
     let mediaRecorder;
     let audioChunks = [];
-    const targetWords = ["jakieś", "yyyy", "aaaa", "tak", "nie"];
+    const targetWords = ["jakieś", "yyyy", "aaaa"];
 
     // Speech recognition setup
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'pl-PL';
+
+    if (!SpeechRecognition) {
+        supportCheckDiv.textContent = "Speech Recognition is not supported in your browser.";
+        startRecordingButton.disabled = true;
+    } else {
+        supportCheckDiv.textContent = "Speech Recognition is supported in your browser.";
+    }
+
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+    if (recognition) {
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'pl-PL';
+    }
 
     let detectedWords = [];
     let recordingStartTime = null;
@@ -78,7 +96,7 @@
             };
 
             mediaRecorder.start();
-            recognition.start();
+            if (recognition) recognition.start();
             detectedWords = [];
             detectedWordsDiv.textContent = "Detected Words: None";
 
@@ -102,7 +120,7 @@
     stopRecordingButton.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
-            recognition.stop();
+            if (recognition) recognition.stop();
             startRecordingButton.disabled = false;
             stopRecordingButton.disabled = true;
 
@@ -112,47 +130,50 @@
         }
     });
 
-    recognition.onresult = event => {
-        const transcript = Array.from(event.results)
-            .map(result => result[0].transcript)
-            .join(' ')
-            .toLowerCase();
+    if (recognition) {
+        recognition.onresult = event => {
+            console.log(event.results);
+            const transcript = Array.from(event.results)
+                .map(result => result[0].transcript)
+                .join(' ')
+                .toLowerCase();
 
-        targetWords.forEach(word => {
-            if (transcript.includes(word) && !detectedWords.includes(word)) {
-                detectedWords.push(word);
+            targetWords.forEach(word => {
+                if (transcript.includes(word) && !detectedWords.includes(word)) {
+                    detectedWords.push(word);
 
-                // Stop recording
-                if (mediaRecorder && mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                    recognition.stop();
-                    clearInterval(timerInterval);
+                    // Stop recording
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                        recognition.stop();
+                        clearInterval(timerInterval);
 
-                    // Play the last 10 seconds
-                    if (audioPlayback.src) {
-                        const audioDuration = audioPlayback.duration;
-                        if (!isNaN(audioDuration) && audioDuration > 10) {
-                            audioPlayback.currentTime = audioDuration - 10;
-                        } else {
-                            audioPlayback.currentTime = 0;
+                        // Play the last 10 seconds
+                        if (audioPlayback.src) {
+                            const audioDuration = audioPlayback.duration;
+                            if (!isNaN(audioDuration) && audioDuration > 10) {
+                                audioPlayback.currentTime = audioDuration - 10;
+                            } else {
+                                audioPlayback.currentTime = 0;
+                            }
+                            audioPlayback.play();
                         }
-                        audioPlayback.play();
+
+                        // Restart recording after playback ends
+                        audioPlayback.onended = () => {
+                            startRecording();
+                        };
                     }
-
-                    // Restart recording after playback ends
-                    audioPlayback.onended = () => {
-                        startRecording();
-                    };
                 }
-            }
-        });
+            });
 
-        detectedWordsDiv.textContent = "Detected Words: " + (detectedWords.length ? detectedWords.join(', ') : 'None');
-    };
+            detectedWordsDiv.textContent = "Detected Words: " + (detectedWords.length ? detectedWords.join(', ') : 'None');
+        };
 
-    recognition.onerror = event => {
-        console.error('Speech recognition error:', event.error);
-    };
+        recognition.onerror = event => {
+            console.error('Speech recognition error:', event.error);
+        };
+    }
 </script>
 </body>
 </html>
