@@ -78,6 +78,7 @@
     }
 
     let detectedWords = [];
+    let fullTranscript = [];
     let recordingStartTime = null;
     let timerInterval = null;
 
@@ -102,7 +103,7 @@
             detectedWords = [];
             detectedWordsDiv.textContent = "Detected Words: None";
 
-            transcript = [];
+            fullTranscript = [];
             transcriptDiv.textContent = "Transcript: None";
 
             startRecordingButton.disabled = true;
@@ -141,11 +142,13 @@
                 .map(result => result[0].transcript)
                 .join(' ')
                 .toLowerCase();
-            detectedWords.push(transcript);
+            transcript.push(transcript);
+            transcriptDiv.textContent = "Transcript: " + (transcript.length ? transcript.join(', ') : 'None');
 
             targetWords.forEach(word => {
                 if (transcript.includes(word) && !detectedWords.includes(word)) {
                     detectedWords.push(word);
+                    detectedWordsDiv.textContent = "Detected Words: " + (detectedWords.length ? detectedWords.join(', ') : 'None');
 
                     // Stop recording
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -171,8 +174,6 @@
                     }
                 }
             });
-
-            detectedWordsDiv.textContent = "Detected Words: " + (detectedWords.length ? detectedWords.join(', ') : 'None');
         };
 
         recognition.onerror = event => {
